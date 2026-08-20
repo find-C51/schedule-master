@@ -1,0 +1,8 @@
+{
+  "appId": "com.schedulemaster.app",
+  "appName": "ScheduleMaster",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
