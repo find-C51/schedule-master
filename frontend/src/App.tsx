@@ -6,6 +6,7 @@ import SchedulePage from './pages/SchedulePage'
 import SettingsPage from './pages/SettingsPage'
 import StatsPage from './pages/StatsPage'
 import AssistantPage from './pages/AssistantPage'
+import InstallPrompt from './components/InstallPrompt'
 
 function SplashScreen({ onDone }: { onDone: () => void }) {
   useEffect(() => {
@@ -82,8 +83,9 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       {showSplash && <SplashScreen onDone={dismissSplash} />}
+      <InstallPrompt />
       <div className="min-h-screen pb-20 animate-fade-in">
         <Routes>
           <Route path="/" element={<HomePage />} />

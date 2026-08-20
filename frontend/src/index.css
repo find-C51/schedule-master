@@ -64,6 +64,15 @@ button:active {
   animation: slide-up 0.3s ease-out;
 }
 
+/* Slide in from top */
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
 /* Fade in */
 @keyframes fade-in {
   from { opacity: 0; }
