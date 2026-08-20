@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  background: #F9FAFB;
+  overscroll-behavior: none;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+/* Tap highlight removal for mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth button press */
+button:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Pulse dot animation for listening */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+/* Slide in from bottom */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Fade in */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Shimmer loading */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #111827;
+    color: #F9FAFB;
+  }
+  .bg-white {
+    background: #1F2937 !important;
+    color: #F9FAFB !important;
+  }
+  .bg-gray-50 {
+    background: #111827 !important;
+  }
+  .text-gray-400 {
+    color: #9CA3AF !important;
+  }
+  .text-gray-500 {
+    color: #9CA3AF !important;
+  }
+  .text-gray-600 {
+    color: #D1D5DB !important;
+  }
+  .text-gray-700 {
+    color: #E5E7EB !important;
+  }
+  .text-gray-800 {
+    color: #F3F4F6 !important;
+  }
+  .border-gray-100 {
+    border-color: #374151 !important;
+  }
+  .border-gray-200 {
+    border-color: #4B5563 !important;
+  }
+  .border-gray-50 {
+    border-color: #374151 !important;
+  }
+  .shadow-sm {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+  }
+  input, select {
+    background: #374151 !important;
+    color: #F9FAFB !important;
+    border-color: #4B5563 !important;
+  }
+  input::placeholder {
+    color: #6B7280 !important;
+  }
+}
