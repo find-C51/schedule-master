@@ -11,6 +11,7 @@ import {
   getDb, mutateDb, addTask, addGoal, buildGoalTree, saveGoalTree,
   DbTask, DbGoal,
 } from '../store/db'
+import { syncReminders, cancelAllReminders } from './notifications'
 
 export interface Task {
   id: number; title: string; task_type: string; priority: string
@@ -158,6 +159,7 @@ export async function scheduleDailyTasks(date: string, dailyTitles: string[]): P
       tips: result.tips,
     }
   })
+  void syncReminders(getDb().schedules, getDb().settings.reminder_minutes)
   return {
     date,
     slots: result.slots,
@@ -197,6 +199,7 @@ export async function generateSchedule(date: string, fixedIds: number[], flexIds
     }
   })
 
+  void syncReminders(getDb().schedules, getDb().settings.reminder_minutes)
   return {
     date,
     slots: result.slots,
@@ -267,5 +270,26 @@ export async function updateSettings(data: any): Promise<any> {
     if (data.reminder_enabled !== undefined) d.settings.reminder_enabled = data.reminder_enabled ? 1 : 0
     if (data.reminder_minutes !== undefined) d.settings.reminder_minutes = data.reminder_minutes
   })
+  // Reflect reminder settings into the native notification scheduler.
+  if (data.reminder_enabled !== undefined) {
+    if (data.reminder_enabled) {
+      void syncReminders(db.schedules, db.settings.reminder_minutes)
+    } else {
+      void cancelAllReminders()
+    }
+  } else if (data.reminder_minutes !== undefined && db.settings.reminder_enabled) {
+    void syncReminders(db.schedules, db.settings.reminder_minutes)
+  }
   return { ...db.settings, user_id: 'default' }
+}
+
+// Re-register reminders from saved schedules (call on app launch so reminders
+// survive app restarts / phone reboot).
+export async function resyncReminders(): Promise<void> {
+  const db = getDb()
+  if (db.settings.reminder_enabled) {
+    await syncReminders(db.schedules, db.settings.reminder_minutes)
+  } else {
+    await cancelAllReminders()
+  }
 }

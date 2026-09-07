@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { resyncReminders } from './services/api'
 import HomePage from './pages/HomePage'
 import GoalPage from './pages/GoalPage'
 import SchedulePage from './pages/SchedulePage'
@@ -81,6 +82,11 @@ export default function App() {
     setShowSplash(false)
     sessionStorage.setItem('splash-shown', '1')
   }
+
+  // Re-register reminders on every launch (survives app restart). No-op on web.
+  useEffect(() => {
+    resyncReminders()
+  }, [])
 
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
