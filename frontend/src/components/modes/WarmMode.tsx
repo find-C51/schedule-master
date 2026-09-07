@@ -1,6 +1,10 @@
 import { SlotData } from '../../services/api'
 
-interface Props { slots: SlotData[] }
+interface Props {
+  slots: SlotData[]
+  doneTaskIds: Set<number>
+  onToggle: (slot: SlotData) => void
+}
 
 function getGreeting(): { emoji: string; text: string } {
   const h = new Date().getHours()
@@ -26,7 +30,7 @@ function getTaskEmoji(index: number, locked: boolean): string {
   return emojis[index % emojis.length]
 }
 
-function getEncouragement(index: number, total: number): string {
+function getEncouragement(index: number): string {
   const encouragements = [
     '从这个开始吧～', '这个也重要哦', '加油加油！', '你可以的！',
     '慢慢来～', '坚持就是胜利', '小暖陪你一起', '这个很快的',
@@ -35,9 +39,10 @@ function getEncouragement(index: number, total: number): string {
   return encouragements[index % encouragements.length]
 }
 
-export default function WarmMode({ slots }: Props) {
+export default function WarmMode({ slots, doneTaskIds, onToggle }: Props) {
   const greeting = getGreeting()
-  const closing = getClosing(0, slots.length)
+  const doneCount = slots.filter((s) => doneTaskIds.has(s.task_id)).length
+  const closing = getClosing(doneCount, slots.length)
 
   return (
     <div className="space-y-3">
@@ -66,18 +71,27 @@ export default function WarmMode({ slots }: Props) {
         <>
           {slots.map((s, i) => {
             const emoji = getTaskEmoji(i, s.is_locked)
-            const encouragement = getEncouragement(i, slots.length)
+            const encouragement = getEncouragement(i)
+            const isDone = doneTaskIds.has(s.task_id)
             return (
               <div
                 key={i}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100
-                           transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]"
-                style={{ borderLeftWidth: '4px', borderLeftColor: s.color }}
+                className={`bg-white rounded-2xl p-4 shadow-sm border border-gray-100
+                           transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] ${isDone ? 'opacity-60' : ''}`}
+                style={{ borderLeftWidth: '4px', borderLeftColor: isDone ? '#9ca3af' : s.color }}
               >
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => onToggle(s)}
+                    className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs transition
+                      ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'}`}
+                    title={isDone ? '取消完成' : '标记完成'}
+                  >
+                    {isDone ? '✓' : ''}
+                  </button>
                   <span className="text-xl">{emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">
+                    <p className={`text-sm font-medium text-gray-800 truncate ${isDone ? 'line-through text-gray-400' : ''}`}>
                       {s.label}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
@@ -101,7 +115,7 @@ export default function WarmMode({ slots }: Props) {
 
           {/* Bottom badge */}
           <div className="text-center text-xs text-gray-400 py-2">
-            {slots.length} 项任务 · {slots.filter(s => s.is_locked).length} 项固定
+            {doneCount}/{slots.length} 项已完成 · {slots.filter(s => s.is_locked).length} 项固定
           </div>
         </>
       )}

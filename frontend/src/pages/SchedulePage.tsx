@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import VoiceInput from '../components/VoiceInput'
 import { parseVoice, createTask, generateSchedule, ScheduleResponse } from '../services/api'
+import { localDateStr } from '../utils/date'
 
 interface ParsedTask {
   title: string; task_type: string; priority: string
@@ -25,11 +26,7 @@ export default function SchedulePage() {
   const [inputText, setInputText] = useState('')
   const [dayOffset, setDayOffset] = useState(1) // 0=今天 1=明天 2=后天
 
-  const selectedDate = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + dayOffset)
-    return d.toISOString().slice(0, 10)
-  })()
+  const selectedDate = localDateStr(dayOffset)
 
   const handleVoiceResult = async (text: string) => {
     setInputText(text)

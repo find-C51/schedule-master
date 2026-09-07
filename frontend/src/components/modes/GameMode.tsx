@@ -1,7 +1,10 @@
-import { useState } from 'react'
 import { SlotData } from '../../services/api'
 
-interface Props { slots: SlotData[] }
+interface Props {
+  slots: SlotData[]
+  doneTaskIds: Set<number>
+  onToggle: (slot: SlotData) => void
+}
 
 const QUEST_TITLES = [
   '击败拖延兽', '收集知识碎片', '修炼专注力', '突破舒适区',
@@ -15,34 +18,24 @@ const REWARDS = [
   '📺 看半小时综艺', '🍿 边吃零食边休息',
 ]
 
-export default function GameMode({ slots }: Props) {
-  const [completed, setCompleted] = useState<Set<number>>(new Set())
+export default function GameMode({ slots, doneTaskIds, onToggle }: Props) {
   const lockedCount = slots.filter(s => s.is_locked).length
   const flexCount = slots.filter(s => !s.is_locked).length
-  const totalDone = completed.size
+  const totalDone = slots.filter(s => doneTaskIds.has(s.task_id)).length
   const totalSlots = slots.length
 
-  // HP: decreases as day progresses (simulated)
+  // HP: increases as tasks get completed
   const hpPercent = totalSlots > 0
-    ? Math.max(20, 100 - Math.round((totalDone / totalSlots) * 60))
+    ? Math.max(20, 100 - Math.round(((totalSlots - totalDone) / totalSlots) * 60))
     : 100
 
   // EXP
-  const expEarned = totalDone * 15 + completed.size * 5
-  const totalExp = totalSlots * 15 + lockedCount * 5
+  const expEarned = totalDone * 15
+  const totalExp = totalSlots * 15
   const level = Math.floor(expEarned / 50) + 1
 
   // Streak
   const streak = totalDone >= totalSlots && totalSlots > 0 ? '🔥'.repeat(Math.min(5, totalDone)) : ''
-
-  const toggleComplete = (index: number) => {
-    setCompleted(prev => {
-      const next = new Set(prev)
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
-      return next
-    })
-  }
 
   const getRandomReward = () => REWARDS[Math.floor(Math.random() * REWARDS.length)]
 
@@ -101,12 +94,12 @@ export default function GameMode({ slots }: Props) {
 
       {/* Quest list */}
       {slots.map((s, i) => {
-        const isDone = completed.has(i)
+        const isDone = doneTaskIds.has(s.task_id)
         const questTitle = QUEST_TITLES[i % QUEST_TITLES.length]
         return (
           <button
             key={i}
-            onClick={() => toggleComplete(i)}
+            onClick={() => onToggle(s)}
             className={`w-full flex items-center gap-3 p-4 rounded-2xl border-l-4 shadow-sm
               transition-all duration-200 hover:shadow-md active:scale-[0.98] text-left
               ${isDone

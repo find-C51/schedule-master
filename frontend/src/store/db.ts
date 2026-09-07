@@ -14,6 +14,7 @@ export interface DbTask {
   deadline: string | null
   status: string
   goal_id: number | null
+  completed_at: string | null
   created_at: string
 }
 
@@ -133,6 +134,7 @@ export function addTask(db: Db, data: Partial<DbTask>): DbTask {
     deadline: data.deadline ?? null,
     status: data.status ?? 'pending',
     goal_id: data.goal_id ?? null,
+    completed_at: data.completed_at ?? null,
     created_at: new Date().toISOString(),
   }
   db.tasks.unshift(task)

@@ -4,9 +4,11 @@
 
 import { parseIntent } from '../engine/intentParser'
 import { scheduleDay, TaskItem, ScheduleResult } from '../engine/scheduler'
+import { decomposeGoal } from '../engine/goalDecomposer'
 import { assistantChat, fetchBrief, ChatResponse, BriefResponse } from '../engine/assistant'
+import { isoToLocalDateStr } from '../utils/date'
 import {
-  getDb, mutateDb, addTask, addGoal, buildGoalTree,
+  getDb, mutateDb, addTask, addGoal, buildGoalTree, saveGoalTree,
   DbTask, DbGoal,
 } from '../store/db'
 
@@ -73,7 +75,11 @@ export async function updateTaskStatus(id: number, status: string): Promise<bool
   let found = false
   mutateDb((db) => {
     const t = db.tasks.find((x) => x.id === id)
-    if (t) { t.status = status; found = true }
+    if (t) {
+      t.status = status
+      t.completed_at = status === 'done' ? new Date().toISOString() : null
+      found = true
+    }
   })
   return found
 }
@@ -108,6 +114,64 @@ export async function deleteGoal(id: number): Promise<boolean> {
     deleted = db.goals.length < before
   })
   return deleted
+}
+
+// Create a goal AND decompose it into the four-layer tree (big→long→mid→daily),
+// persisting the whole tree and returning the root with its children.
+export async function createDecomposedGoal(title: string): Promise<Goal> {
+  const tree = decomposeGoal(title)
+  let rootId = -1
+  mutateDb((db) => { rootId = saveGoalTree(db, tree).id })
+  const root = buildGoalTree(getDb(), null, 'big').find((g: any) => g.id === rootId)
+  return root as Goal
+}
+
+// Promote a goal's daily tasks into a date's schedule (merging with existing tasks).
+export async function scheduleDailyTasks(date: string, dailyTitles: string[]): Promise<ScheduleResponse> {
+  let result!: ScheduleResult
+  mutateDb((db) => {
+    const existingIds = db.schedules[date]?.slots.map((s) => s.task_id).filter((id) => id > 0) ?? []
+    const existingTasks = db.tasks.filter((t) => existingIds.includes(t.id))
+    const fixed = existingTasks.filter((t) => t.task_type === 'fixed').map(toItem)
+    const flexible = existingTasks.filter((t) => t.task_type !== 'fixed').map(toItem)
+    const existingTitles = new Set([...fixed, ...flexible].map((t) => t.title))
+
+    for (const title of dailyTitles) {
+      if (!title || existingTitles.has(title)) continue
+      const t = addTask(db, { title, task_type: 'flexible', priority: 'normal', estimated_minutes: 60 })
+      flexible.push(toItem(t))
+    }
+
+    result = scheduleDay({
+      schedule_date: date,
+      fixed_tasks: fixed,
+      flexible_tasks: flexible,
+      protection_rules: db.settings.protection_rules,
+      schedule_policy: db.settings.schedule_policy,
+    })
+
+    db.schedules[date] = {
+      date,
+      slots: result.slots,
+      deferred_task_ids: result.deferred.map((d) => d.id),
+      message: result.message,
+      tips: result.tips,
+    }
+  })
+  return {
+    date,
+    slots: result.slots,
+    deferred_task_ids: result.deferred.map((d) => d.id),
+    message: result.message,
+    tips: result.tips,
+  }
+}
+
+// Dates (YYYY-MM-DD, local timezone) on which at least one task was completed.
+export async function fetchCompletionDates(): Promise<string[]> {
+  return getDb().tasks
+    .filter((t) => t.completed_at)
+    .map((t) => isoToLocalDateStr(t.completed_at!))
 }
 
 export async function generateSchedule(date: string, fixedIds: number[], flexIds: number[]): Promise<ScheduleResponse> {

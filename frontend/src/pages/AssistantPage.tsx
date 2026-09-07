@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { assistantChat, createTask, generateSchedule, fetchBrief, Task, ChatResponse } from '../services/api'
+import { localDateStr } from '../utils/date'
 
 interface Msg {
   role: 'user' | 'assistant'
@@ -95,11 +96,7 @@ export default function AssistantPage() {
     }
   }
 
-  const tomorrow = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 1)
-    return d.toISOString().slice(0, 10)
-  })()
+  const tomorrow = localDateStr(1)
   const fmtTomorrow = (() => {
     const d = new Date()
     d.setDate(d.getDate() + 1)

@@ -1,6 +1,10 @@
 import { SlotData } from '../../services/api'
 
-interface Props { slots: SlotData[] }
+interface Props {
+  slots: SlotData[]
+  doneTaskIds: Set<number>
+  onToggle: (slot: SlotData) => void
+}
 
 function getCurrentTimeSlot(slots: SlotData[]): string | null {
   const now = new Date()
@@ -23,10 +27,11 @@ function timeLabel(start: string, end: string): string {
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 7) // 07:00 - 23:00
 
-export default function TableMode({ slots }: Props) {
+export default function TableMode({ slots, doneTaskIds, onToggle }: Props) {
   const currentActivity = getCurrentTimeSlot(slots)
   const now = new Date()
   const progressPct = Math.round(((now.getHours() - 7) / 16) * 100)
+  const doneCount = slots.filter((s) => doneTaskIds.has(s.task_id)).length
 
   return (
     <div className="space-y-0">
@@ -34,6 +39,7 @@ export default function TableMode({ slots }: Props) {
       <div className="bg-white rounded-xl shadow-sm p-3 mb-3">
         <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
           <span>🌅 07:00</span>
+          <span>✅ {doneCount}/{slots.length}</span>
           <span>🌙 23:00</span>
         </div>
         <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
@@ -72,26 +78,41 @@ export default function TableMode({ slots }: Props) {
               isNow ? 'border-blue-500' : 'border-gray-200'
             }`}>
               {slotAtHour.length > 0 ? (
-                slotAtHour.map((s, i) => (
-                  <div
-                    key={i}
-                    className="p-2 rounded-lg text-sm mb-1 shadow-sm transition-all hover:scale-[1.02] active:scale-95"
-                    style={{
-                      backgroundColor: `${s.color}15`,
-                      borderLeft: `3px solid ${s.color}`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{s.label}</span>
-                      <span className="text-xs text-gray-400">
-                        {s.is_locked ? '🔒' : '📝'}
+                slotAtHour.map((s, i) => {
+                  const isDone = doneTaskIds.has(s.task_id)
+                  return (
+                    <div
+                      key={i}
+                      className={`p-2 rounded-lg text-sm mb-1 shadow-sm transition-all hover:scale-[1.02] active:scale-95 ${isDone ? 'opacity-60' : ''}`}
+                      style={{
+                        backgroundColor: `${s.color}15`,
+                        borderLeft: `3px solid ${s.color}`,
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <button
+                            onClick={() => onToggle(s)}
+                            className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] transition
+                              ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'}`}
+                            title={isDone ? '取消完成' : '标记完成'}
+                          >
+                            {isDone ? '✓' : ''}
+                          </button>
+                          <span className={`font-medium truncate ${isDone ? 'line-through text-gray-400' : ''}`}>
+                            {s.label}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-400 shrink-0">
+                          {s.is_locked ? '🔒' : '📝'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">
+                        {timeLabel(s.start_time, s.end_time)}
                       </span>
                     </div>
-                    <span className="text-[10px] text-gray-400">
-                      {timeLabel(s.start_time, s.end_time)}
-                    </span>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <div className="h-4" />
               )}

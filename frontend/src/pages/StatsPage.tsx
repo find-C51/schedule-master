@@ -1,21 +1,41 @@
-import { useState, useEffect } from 'react'
-import { fetchTasks, deleteTask, updateTaskStatus, Task } from '../services/api'
+import { useState, useEffect, useCallback } from 'react'
+import { fetchTasks, deleteTask, updateTaskStatus, fetchCompletionDates, Task } from '../services/api'
+import { formatLocal } from '../utils/date'
+
+function computeStreak(dates: string[]): number {
+  const set = new Set(dates)
+  const d = new Date()
+  // Today may not be finished yet; don't break the streak for that.
+  if (!set.has(formatLocal(d))) d.setDate(d.getDate() - 1)
+  let streak = 0
+  while (set.has(formatLocal(d))) {
+    streak++
+    d.setDate(d.getDate() - 1)
+  }
+  return streak
+}
 
 export default function StatsPage() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [completionDates, setCompletionDates] = useState<string[]>([])
 
-  useEffect(() => { fetchTasks().then(setTasks).catch(() => {}) }, [])
+  const load = useCallback(() => {
+    fetchTasks().then(setTasks).catch(() => {})
+    fetchCompletionDates().then(setCompletionDates).catch(() => {})
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('确定删除这个任务吗？')) return
     await deleteTask(id)
-    setTasks(tasks.filter((t) => t.id !== id))
+    load()
   }
 
   const handleToggleDone = async (t: Task) => {
     const newStatus = t.status === 'done' ? 'pending' : 'done'
     await updateTaskStatus(t.id, newStatus)
-    setTasks(tasks.map((x) => x.id === t.id ? { ...x, status: newStatus } : x))
+    load()
   }
 
   const total = tasks.length
@@ -24,12 +44,14 @@ export default function StatsPage() {
   const pending = tasks.filter(t => t.status === 'pending').length
   const rate = total > 0 ? Math.round((done / total) * 100) : 0
 
-  // Weekly mock streak (in production, this would come from the backend)
-  const streakDays = done > 0 ? Math.min(7, Math.ceil(done / 2)) : 0
-  const streakEmoji = streakDays >= 7 ? '🔥'.repeat(7) : '🔥'.repeat(streakDays) + '⚪'.repeat(Math.max(0, 7 - streakDays))
+  const streakDays = computeStreak(completionDates)
+  const totalDoneDays = new Set(completionDates).size
+  const streakEmoji = Array.from({ length: 7 }, (_, i) =>
+    i < streakDays ? '🔥' : '⚪'
+  ).join('')
 
   return (
-    <div className="max-w-md mx-auto p-4">
+    <div className="max-w-md mx-auto p-4 pb-24">
       <h1 className="text-2xl font-bold mb-1">📊 进度追踪</h1>
       <p className="text-gray-500 text-sm mb-4">你的每一步都算数 ✨</p>
 
@@ -37,10 +59,17 @@ export default function StatsPage() {
       <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-4 mb-4 border border-orange-100 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-orange-800">本周连续天数</p>
-            <p className="text-xs text-orange-500 mt-0.5">保持每日完成任务的节奏</p>
+            <p className="text-sm font-medium text-orange-800">连续打卡 {streakDays} 天</p>
+            <p className="text-xs text-orange-500 mt-0.5">
+              累计 {totalDoneDays} 天有完成记录
+            </p>
           </div>
-          <div className="text-2xl tracking-wider">{streakEmoji}</div>
+          <div className="text-right">
+            <div className="text-2xl tracking-wider">{streakEmoji}</div>
+            {streakDays >= 3 && (
+              <p className="text-xs text-orange-500 font-medium mt-1">状态火热！继续冲 🔥</p>
+            )}
+          </div>
         </div>
       </div>
 

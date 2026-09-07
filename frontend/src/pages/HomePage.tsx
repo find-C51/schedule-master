@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getSchedule, SlotData, fetchSettings, updateSettings } from '../services/api'
+import {
+  getSchedule, SlotData, fetchSettings, updateSettings, fetchTasks, fetchGoals,
+  updateTaskStatus,
+} from '../services/api'
+import { localDateStr } from '../utils/date'
 import TableMode from '../components/modes/TableMode'
 import SwiftMode from '../components/modes/SwiftMode'
 import WarmMode from '../components/modes/WarmMode'
@@ -28,18 +32,21 @@ export default function HomePage() {
   const [slots, setSlots] = useState<SlotData[]>([])
   const [dayOffset, setDayOffset] = useState(0) // 0=今天 1=明天 2=后天
   const [mode, setMode] = useState('table')
+  const [doneIds, setDoneIds] = useState<Set<number>>(new Set())
+  const [taskCount, setTaskCount] = useState(0)
+  const [goalCount, setGoalCount] = useState(0)
   const navigate = useNavigate()
 
-  const date = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + dayOffset)
-    return d.toISOString().slice(0, 10)
-  })()
-
+  const date = localDateStr(dayOffset)
   const dayLabel = dayOffset === 0 ? '今天' : dayOffset === 1 ? '明天' : '后天'
 
   useEffect(() => {
     getSchedule(date).then((d) => setSlots(d.slots || []))
+    fetchTasks().then((ts) => {
+      setTaskCount(ts.length)
+      setDoneIds(new Set(ts.filter((t) => t.status === 'done').map((t) => t.id)))
+    })
+    fetchGoals().then((gs) => setGoalCount(gs.length)).catch(() => {})
     fetchSettings().then((s) => setMode(s.interaction_mode || 'table')).catch(() => {})
   }, [date])
 
@@ -50,12 +57,26 @@ export default function HomePage() {
     } catch {}
   }
 
+  const handleToggle = async (slot: SlotData) => {
+    const id = slot.task_id
+    if (!id || id <= 0) return
+    const isDone = doneIds.has(id)
+    await updateTaskStatus(id, isDone ? 'pending' : 'done')
+    setDoneIds((prev) => {
+      const next = new Set(prev)
+      if (isDone) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const greeting = getGreeting()
+  const isFirstRun = slots.length === 0 && taskCount === 0 && goalCount === 0 && dayOffset === 0
 
   const renderMode = () => {
     if (slots.length === 0) {
       return (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-12 text-gray-400">
           <p className="text-5xl mb-4">📭</p>
           <p>{dayLabel}还没有日程</p>
           <p className="text-sm mt-1">
@@ -72,15 +93,15 @@ export default function HomePage() {
       )
     }
     switch (mode) {
-      case 'swift': return <SwiftMode slots={slots} date={date} />
-      case 'warm': return <WarmMode slots={slots} />
-      case 'game': return <GameMode slots={slots} />
-      default: return <TableMode slots={slots} />
+      case 'swift': return <SwiftMode slots={slots} date={date} doneTaskIds={doneIds} onToggle={handleToggle} />
+      case 'warm': return <WarmMode slots={slots} doneTaskIds={doneIds} onToggle={handleToggle} />
+      case 'game': return <GameMode slots={slots} doneTaskIds={doneIds} onToggle={handleToggle} />
+      default: return <TableMode slots={slots} doneTaskIds={doneIds} onToggle={handleToggle} />
     }
   }
 
   return (
-    <div className="max-w-md mx-auto p-4">
+    <div className="max-w-md mx-auto p-4 pb-24">
       <div className="flex justify-between items-center mb-2">
         <div>
           <h1 className="text-2xl font-bold">日程智排</h1>
@@ -106,6 +127,39 @@ export default function HomePage() {
         </button>
       </div>
 
+      {/* First-run onboarding */}
+      {isFirstRun && (
+        <div className="bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl p-4 mb-3 text-white shadow-lg">
+          <p className="font-bold mb-2">👋 欢迎使用日程智排，三步开启高效一天：</p>
+          <div className="space-y-2 text-sm">
+            <button
+              onClick={() => navigate('/goals')}
+              className="w-full flex items-center gap-2 bg-white/15 rounded-xl px-3 py-2 hover:bg-white/25 active:scale-[0.98] transition text-left"
+            >
+              <span className="text-lg">🎯</span>
+              <span className="flex-1"><b>1. 设定目标</b> — AI 帮你拆解成每日任务</span>
+              <span className="opacity-70">→</span>
+            </button>
+            <button
+              onClick={() => navigate('/assistant')}
+              className="w-full flex items-center gap-2 bg-white/15 rounded-xl px-3 py-2 hover:bg-white/25 active:scale-[0.98] transition text-left"
+            >
+              <span className="text-lg">🧡</span>
+              <span className="flex-1"><b>2. 和小暖说</b> — 一句话语音排程</span>
+              <span className="opacity-70">→</span>
+            </button>
+            <button
+              onClick={() => navigate('/schedule')}
+              className="w-full flex items-center gap-2 bg-white/15 rounded-xl px-3 py-2 hover:bg-white/25 active:scale-[0.98] transition text-left"
+            >
+              <span className="text-lg">📅</span>
+              <span className="flex-1"><b>3. 查看今日</b> — 一键打卡完成任务</span>
+              <span className="opacity-70">→</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Date selector */}
       <div className="flex gap-2 mb-3">
         {[
@@ -128,7 +182,7 @@ export default function HomePage() {
       </div>
 
       {/* Mode switcher */}
-      <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+      <div className="flex gap-1 mb-1 overflow-x-auto pb-1">
         {MODE_OPTIONS.map((opt) => (
           <button
             key={opt.key}
@@ -143,6 +197,9 @@ export default function HomePage() {
           </button>
         ))}
       </div>
+      {slots.length > 0 && (
+        <p className="text-[11px] text-gray-400 mb-3">💡 点一下日程就能打卡完成，再点取消</p>
+      )}
 
       {renderMode()}
     </div>
