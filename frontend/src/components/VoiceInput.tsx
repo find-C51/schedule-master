@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 interface Props {
   onResult: (text: string) => void
+  title?: string
 }
 
 // 常用任务快捷模板（贴合学生生活）
@@ -42,7 +43,7 @@ function AudioWave({ active }: { active: boolean }) {
   )
 }
 
-export default function VoiceInput({ onResult }: Props) {
+export default function VoiceInput({ onResult, title }: Props) {
   const [manualText, setManualText] = useState('')
   const [listening, setListening] = useState(false)
   const [status, setStatus] = useState<'idle' | 'listening' | 'processing' | 'done'>('idle')
@@ -120,7 +121,7 @@ export default function VoiceInput({ onResult }: Props) {
       {/* ── 主输入区：大字文字框 ── */}
       <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
         <p className="text-sm font-semibold text-gray-700 mb-2">
-          🗣️ 说说你明天要做什么
+          {title ?? '🗣️ 说说你明天要做什么'}
         </p>
         <textarea
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[15px] leading-relaxed

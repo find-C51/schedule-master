@@ -26,30 +26,20 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(false)
   const [parsing, setParsing] = useState(false)
   const [inputText, setInputText] = useState('')
-  const [dayOffset, setDayOffset] = useState(0) // 0=今天 1=明天 2=后天
+  const [error, setError] = useState('')
+  const [dayOffset, setDayOffset] = useState(1) // 0=今天 1=明天 2=后天
 
   const selectedDate = localDateStr(dayOffset)
   const dayLabelText = dayOffset === 0 ? '今日' : dayOffset === 1 ? '明日' : '后日'
+  const dayWord = dayOffset === 0 ? '今天' : dayOffset === 1 ? '明天' : '后天'
 
-  const handleVoiceResult = async (text: string) => {
-    setInputText(text)
-    setParsing(true)
-    setSchedule(null)
-    try {
-      const result = await parseVoice(text)
-      setTasks(result.tasks as ParsedTask[])
-    } catch {
-      setTasks([])
-    }
-    setParsing(false)
-  }
-
-  const handleGenerate = async () => {
+  const doGenerate = async (parsedTasks: ParsedTask[]) => {
     setLoading(true)
+    setError('')
     try {
       const fixedIds: number[] = []
       const flexIds: number[] = []
-      for (const t of tasks) {
+      for (const t of parsedTasks) {
         const created = await createTask({
           title: t.title, task_type: t.task_type, priority: t.priority,
           estimated_minutes: t.estimated_minutes, time_hint: t.time_hint,
@@ -63,8 +53,38 @@ export default function SchedulePage() {
       navigate(`/?day=${dayOffset}`)
     } catch (e) {
       console.error('Generate failed:', e)
+      setError('排程失败，请重试')
     }
     setLoading(false)
+  }
+
+  const handleVoiceResult = async (text: string) => {
+    setInputText(text)
+    setParsing(true)
+    setSchedule(null)
+    setError('')
+    try {
+      const result = await parseVoice(text)
+      const parsedTasks = result.tasks as ParsedTask[]
+      setTasks(parsedTasks)
+      if (parsedTasks.length === 0) {
+        setError('没识别到任务，请换个说法，例如：明天上午8点到10点上课')
+      } else {
+        await doGenerate(parsedTasks)
+      }
+    } catch {
+      setTasks([])
+      setError('识别失败，请重试')
+    }
+    setParsing(false)
+  }
+
+  const handleGenerate = async () => {
+    if (tasks.length === 0) {
+      setError('请先输入或说出要做的事')
+      return
+    }
+    await doGenerate(tasks)
   }
 
   const removeTask = (index: number) => {
@@ -104,7 +124,7 @@ export default function SchedulePage() {
         ))}
       </div>
 
-      <VoiceInput onResult={handleVoiceResult} />
+      <VoiceInput onResult={handleVoiceResult} title={`🗣️ 说说你${dayWord}要做什么`} />
 
       {/* Parsing state */}
       {parsing && (
@@ -118,6 +138,14 @@ export default function SchedulePage() {
         <div className="mt-3 p-3 bg-gray-50 rounded-xl text-sm">
           <span className="text-gray-400 text-xs">你说的：</span>
           <p className="text-gray-700 mt-0.5">"{inputText}"</p>
+        </div>
+      )}
+
+      {/* Error feedback */}
+      {error && (
+        <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600 flex items-start gap-2">
+          <span>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
