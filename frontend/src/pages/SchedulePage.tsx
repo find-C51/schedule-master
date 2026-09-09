@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import VoiceInput from '../components/VoiceInput'
 import { parseVoice, createTask, generateSchedule, ScheduleResponse } from '../services/api'
 import { localDateStr } from '../utils/date'
@@ -19,14 +20,16 @@ const TYPE_ICONS: Record<string, string> = {
 }
 
 export default function SchedulePage() {
+  const navigate = useNavigate()
   const [tasks, setTasks] = useState<ParsedTask[]>([])
   const [schedule, setSchedule] = useState<ScheduleResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [parsing, setParsing] = useState(false)
   const [inputText, setInputText] = useState('')
-  const [dayOffset, setDayOffset] = useState(1) // 0=今天 1=明天 2=后天
+  const [dayOffset, setDayOffset] = useState(0) // 0=今天 1=明天 2=后天
 
   const selectedDate = localDateStr(dayOffset)
+  const dayLabelText = dayOffset === 0 ? '今日' : dayOffset === 1 ? '明日' : '后日'
 
   const handleVoiceResult = async (text: string) => {
     setInputText(text)
@@ -56,6 +59,8 @@ export default function SchedulePage() {
       }
       const s = await generateSchedule(selectedDate, fixedIds, flexIds)
       setSchedule(s)
+      // 排好后直接跳转到「今日」页，让用户立刻看到排程结果
+      navigate(`/?day=${dayOffset}`)
     } catch (e) {
       console.error('Generate failed:', e)
     }
@@ -177,7 +182,7 @@ export default function SchedulePage() {
                 正在排程...
               </>
             ) : (
-              <>🤖 生成明日日程</>
+              <>🤖 生成{dayLabelText}日程</>
             )}
           </button>
         </div>

@@ -121,7 +121,7 @@ export default function AssistantPage() {
       const tipText = s.tips?.length ? `\n\n💡 ${s.tips.join('；')}` : ''
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        text: `排好啦！明天（${fmtTomorrow}）一共 ${s.slots.length} 个时段，已经帮你锁好了 ✅${tipText}\n\n去「今日」页看看，记得切到「明天」哦～`,
+        text: `排好啦！明天（${fmtTomorrow}）一共 ${s.slots.length} 个时段，已经帮你锁好了 ✅${tipText}\n\n点下方「查看日程」直接看明天～`,
         suggestions: ['查看日程', '再补充几件事'],
       }])
     } catch {
@@ -214,7 +214,7 @@ export default function AssistantPage() {
                     return (
                       <button
                         key={si}
-                        onClick={() => (isNav ? navigate('/') : send(s))}
+                        onClick={() => (isNav ? navigate('/?day=1') : send(s))}
                         className="px-3 py-1.5 rounded-full text-xs border border-amber-200 bg-amber-50 text-amber-700
                                    hover:bg-amber-100 active:scale-95 transition"
                       >

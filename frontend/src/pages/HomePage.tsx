@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   getSchedule, SlotData, fetchSettings, updateSettings, fetchTasks, fetchGoals,
   updateTaskStatus,
@@ -29,8 +29,12 @@ function getGreeting(): { emoji: string; text: string } {
 }
 
 export default function HomePage() {
+  const [searchParams] = useSearchParams()
   const [slots, setSlots] = useState<SlotData[]>([])
-  const [dayOffset, setDayOffset] = useState(0) // 0=今天 1=明天 2=后天
+  const [dayOffset, setDayOffset] = useState(() => {
+    const raw = parseInt(searchParams.get('day') ?? '0', 10)
+    return Number.isNaN(raw) || raw < 0 || raw > 2 ? 0 : raw
+  })
   const [mode, setMode] = useState('table')
   const [doneIds, setDoneIds] = useState<Set<number>>(new Set())
   const [taskCount, setTaskCount] = useState(0)
